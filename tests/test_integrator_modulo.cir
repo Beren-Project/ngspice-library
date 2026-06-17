@@ -1,0 +1,34 @@
+Modulo integrator regression
+
+.control
+pre_codemodel build/ngfuncs.cm
+.endc
+
+.include lib/ngfuncs.lib
+
+Vin in 0 dc 1
+
+Xmod in phase NG_INT_MOD params: ic=0 gain=1 modulus=0.25
+
+Rin in 0 1G
+Rp phase 0 1G
+
+.tran 0.25m 0.55
+
+.control
+run
+meas tran before_first_wrap FIND v(phase) at=0.125
+meas tran after_first_wrap FIND v(phase) at=0.255
+meas tran before_second_wrap FIND v(phase) at=0.375
+meas tran after_second_wrap FIND v(phase) at=0.505
+if (abs(before_first_wrap - 0.125) < 0.02) & (after_first_wrap < 0.03) & (abs(before_second_wrap - 0.125) < 0.02) & (after_second_wrap < 0.03)
+  echo TEST PASS integrator_modulo
+  quit 0
+else
+  echo TEST FAIL integrator_modulo
+  print before_first_wrap after_first_wrap before_second_wrap after_second_wrap
+  quit 1
+end
+.endc
+
+.end

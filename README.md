@@ -48,6 +48,22 @@ source netlist for each test:
 tests/output/report/index.html
 ```
 
+The regression decks are intentionally split by device/behavior:
+
+- `test_integrator_reset_pulse.cir` - level-sensitive reset with repeated pulses
+- `test_integrator_reset_rise.cir` - rising-edge reset with repeated pulses
+- `test_integrator_reset_fall.cir` - falling-edge reset with repeated pulses
+- `test_integrator_modulo.cir` - modulo reset
+- `test_sample_rise.cir` - repeated rising-edge samples
+- `test_sample_fall.cir` - repeated falling-edge samples
+- `test_integrator_antiwindup_pulse.cir` - anti-windup clamp, reverse input recovery, and pulse reset
+- `test_derivative.cir` - derivative wrapper
+
+For `NG_INT_AW_PULSE`, `vth` is the reset threshold and `ic` is the reset
+output value. For example, `params: ic=0 ... vth=0.5` resets to `0 V` while
+`rst` is above `0.5 V`; a `1 V` reset pulse is only the trigger level, not the
+reset output level.
+
 To use a different source tree, override `NGSPICE_SRC`:
 
 ```sh

@@ -1,0 +1,37 @@
+Rising-edge sample regression
+
+.control
+pre_codemodel build/ngfuncs.cm
+.endc
+
+.include lib/ngfuncs.lib
+
+Vsig sig 0 pwl(0 0 0.6 6)
+Vclk clk 0 pwl(0 0 0.12 0 0.120001 1 0.14 1 0.140001 0 0.24 0 0.240001 1 0.26 1 0.260001 0 0.36 0 0.360001 1 0.38 1 0.380001 0 0.48 0 0.480001 1 0.50 1 0.500001 0 0.6 0)
+
+Xsamp sig clk held NG_SAMPLE_RISE params: ic=-1 vth=0.5
+
+Rs sig 0 1G
+Rc clk 0 1G
+Rh held 0 1G
+
+.tran 0.25m 0.56
+
+.control
+run
+meas tran initial_held FIND v(held) at=0.08
+meas tran held_after_first FIND v(held) at=0.16
+meas tran held_after_second FIND v(held) at=0.28
+meas tran held_after_third FIND v(held) at=0.40
+meas tran held_after_fourth FIND v(held) at=0.52
+if (abs(initial_held + 1) < 0.02) & (abs(held_after_first - 1.2) < 0.08) & (abs(held_after_second - 2.4) < 0.08) & (abs(held_after_third - 3.6) < 0.08) & (abs(held_after_fourth - 4.8) < 0.08)
+  echo TEST PASS sample_rise
+  quit 0
+else
+  echo TEST FAIL sample_rise
+  print initial_held held_after_first held_after_second held_after_third held_after_fourth
+  quit 1
+end
+.endc
+
+.end

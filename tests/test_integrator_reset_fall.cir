@@ -1,0 +1,39 @@
+Resettable integrator falling-edge reset regression
+
+.control
+pre_codemodel build/ngfuncs.cm
+.endc
+
+.include lib/ngfuncs.lib
+
+Vin in 0 dc 1
+Vrst rst 0 pwl(0 0 0.2 0 0.200001 1 0.22 1 0.220001 0 0.5 0 0.500001 1 0.52 1 0.520001 0 0.75 0 0.750001 1 0.77 1 0.770001 0 0.9 0)
+
+Xint in rst out NG_INT_FALL params: ic=0.25 gain=1 vth=0.5
+
+Rin in 0 1G
+Rrst rst 0 1G
+Rout out 0 1G
+
+.tran 0.5m 0.9
+
+.control
+run
+meas tran before_first_fall FIND v(out) at=0.21
+meas tran after_first_fall FIND v(out) at=0.225
+meas tran later_first FIND v(out) at=0.30
+meas tran after_second_fall FIND v(out) at=0.525
+meas tran later_second FIND v(out) at=0.60
+meas tran after_third_fall FIND v(out) at=0.775
+meas tran later_third FIND v(out) at=0.85
+if (abs(before_first_fall - 0.46) < 0.02) & (abs(after_first_fall - 0.255) < 0.02) & (abs(later_first - 0.33) < 0.03) & (abs(after_second_fall - 0.255) < 0.02) & (abs(later_second - 0.33) < 0.03) & (abs(after_third_fall - 0.255) < 0.02) & (abs(later_third - 0.33) < 0.03)
+  echo TEST PASS integrator_reset_fall
+  quit 0
+else
+  echo TEST FAIL integrator_reset_fall
+  print before_first_fall after_first_fall later_first after_second_fall later_second after_third_fall later_third
+  quit 1
+end
+.endc
+
+.end
