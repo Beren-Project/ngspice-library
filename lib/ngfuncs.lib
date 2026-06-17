@@ -1,0 +1,64 @@
+* ngspice function block helper wrappers.
+* Requires ngfuncs.cm to be loaded before parsing, e.g.:
+* .control
+* pre_codemodel build/ngfuncs.cm
+* .endc
+
+.subckt NG_INT_PULSE in rst out params: ic=0 gain=1 vth=0.5 vhyst=0 lo=-1e12 hi=1e12 limit_range=1e-9
+aint in rst out ng_int_pulse_m
+.model ng_int_pulse_m ng_int_rst(mode=0 ic={ic} gain={gain} vth={vth} vhyst={vhyst}
++ lo={lo} hi={hi} limit_range={limit_range} aw_enable=false)
+.ends NG_INT_PULSE
+
+.subckt NG_INT_RISE in rst out params: ic=0 gain=1 vth=0.5 vhyst=0 lo=-1e12 hi=1e12 limit_range=1e-9
+aint in rst out ng_int_rise_m
+.model ng_int_rise_m ng_int_rst(mode=1 ic={ic} gain={gain} vth={vth} vhyst={vhyst}
++ lo={lo} hi={hi} limit_range={limit_range} aw_enable=false)
+.ends NG_INT_RISE
+
+.subckt NG_INT_FALL in rst out params: ic=0 gain=1 vth=0.5 vhyst=0 lo=-1e12 hi=1e12 limit_range=1e-9
+aint in rst out ng_int_fall_m
+.model ng_int_fall_m ng_int_rst(mode=2 ic={ic} gain={gain} vth={vth} vhyst={vhyst}
++ lo={lo} hi={hi} limit_range={limit_range} aw_enable=false)
+.ends NG_INT_FALL
+
+.subckt NG_INT_AW_PULSE in rst out params: ic=0 gain=1 vth=0.5 vhyst=0 lo=-1e12 hi=1e12 limit_range=1e-9
+aint in rst out ng_int_aw_pulse_m
+.model ng_int_aw_pulse_m ng_int_rst(mode=0 ic={ic} gain={gain} vth={vth} vhyst={vhyst}
++ lo={lo} hi={hi} limit_range={limit_range} aw_enable=true)
+.ends NG_INT_AW_PULSE
+
+.subckt NG_INT_AW_RISE in rst out params: ic=0 gain=1 vth=0.5 vhyst=0 lo=-1e12 hi=1e12 limit_range=1e-9
+aint in rst out ng_int_aw_rise_m
+.model ng_int_aw_rise_m ng_int_rst(mode=1 ic={ic} gain={gain} vth={vth} vhyst={vhyst}
++ lo={lo} hi={hi} limit_range={limit_range} aw_enable=true)
+.ends NG_INT_AW_RISE
+
+.subckt NG_INT_AW_FALL in rst out params: ic=0 gain=1 vth=0.5 vhyst=0 lo=-1e12 hi=1e12 limit_range=1e-9
+aint in rst out ng_int_aw_fall_m
+.model ng_int_aw_fall_m ng_int_rst(mode=2 ic={ic} gain={gain} vth={vth} vhyst={vhyst}
++ lo={lo} hi={hi} limit_range={limit_range} aw_enable=true)
+.ends NG_INT_AW_FALL
+
+.subckt NG_INT_MOD in out params: ic=0 gain=1 modulus=1 lo=-1e12 hi=1e12 limit_range=1e-9
+aint in out ng_int_mod_m
+.model ng_int_mod_m ng_int_mod(ic={ic} gain={gain} modulus={modulus}
++ lo={lo} hi={hi} limit_range={limit_range})
+.ends NG_INT_MOD
+
+.subckt NG_SAMPLE_RISE in trig out params: ic=0 vth=0.5 vhyst=0
+asamp in trig out ng_sample_rise_m
+.model ng_sample_rise_m ng_sample(edge=1 ic={ic} vth={vth} vhyst={vhyst})
+.ends NG_SAMPLE_RISE
+
+.subckt NG_SAMPLE_FALL in trig out params: ic=0 vth=0.5 vhyst=0
+asamp in trig out ng_sample_fall_m
+.model ng_sample_fall_m ng_sample(edge=2 ic={ic} vth={vth} vhyst={vhyst})
+.ends NG_SAMPLE_FALL
+
+.subckt NG_DDT in out params: gain=1 out_offset=0 lo=-1e12 hi=1e12 limit_range=1e-9
+addt in out ng_ddt_m
+.model ng_ddt_m d_dt(gain={gain} out_offset={out_offset}
++ out_lower_limit={lo} out_upper_limit={hi} limit_range={limit_range})
+.ends NG_DDT
+

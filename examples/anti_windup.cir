@@ -1,0 +1,26 @@
+Anti-windup resettable integrator example
+
+.control
+pre_codemodel build/ngfuncs.cm
+.endc
+
+.include lib/ngfuncs.lib
+
+Vin in 0 pwl(0 1 1 1 1.001 -1 2 -1)
+Vrst rst 0 dc 0
+
+Xint in rst out NG_INT_AW_PULSE params: ic=0 gain=1 lo=-0.25 hi=0.25 vth=0.5
+
+Rin in 0 1G
+Rrst rst 0 1G
+Rout out 0 1G
+
+.tran 1m 2
+
+.control
+run
+plot v(in) v(out)
+.endc
+
+.end
+

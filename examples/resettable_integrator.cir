@@ -1,0 +1,26 @@
+Resettable integrator example
+
+.control
+pre_codemodel build/ngfuncs.cm
+.endc
+
+.include lib/ngfuncs.lib
+
+Vin in 0 dc 1
+Vrst rst 0 pulse(0 1 0.5 1n 1n 20m 1)
+
+Xint in rst out NG_INT_RISE params: ic=0 gain=1 vth=0.5
+
+Rin in 0 1G
+Rrst rst 0 1G
+Rout out 0 1G
+
+.tran 1m 1.2
+
+.control
+run
+plot v(in) v(rst) v(out)
+.endc
+
+.end
+

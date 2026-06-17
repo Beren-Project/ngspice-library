@@ -1,0 +1,25 @@
+Stock ngspice d_dt smoke test
+
+Vin in 0 pwl(0 0 1 1)
+addt in out ddt_m
+.model ddt_m d_dt(gain=1 out_lower_limit=-1e12 out_upper_limit=1e12 limit_range=1e-9)
+Rin in 0 1G
+Rout out 0 1G
+
+.tran 1m 1
+
+.control
+run
+meas tran slope AVG v(out) from=0.2 to=0.8
+if abs(slope - 1) < 0.02
+  echo TEST PASS stock_ddt_smoke
+  quit 0
+else
+  echo TEST FAIL stock_ddt_smoke
+  print slope
+  quit 1
+end
+.endc
+
+.end
+
