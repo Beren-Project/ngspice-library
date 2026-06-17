@@ -46,6 +46,16 @@ To use a different source tree, override `NGSPICE_SRC`:
 make build-cm NGSPICE_SRC=/path/to/ngspice-source
 ```
 
+## Git
+
+This workspace has a read-only `.git` mount, so the project repository uses
+`.repo.git`. Use the helper script for normal Git commands:
+
+```sh
+scripts/project-git.sh status
+scripts/project-git.sh log --oneline
+```
+
 ## Use
 
 Load the code model before circuit parsing and include the wrapper library:
