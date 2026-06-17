@@ -82,6 +82,9 @@ scripts/project-git.sh log --oneline
 
 ## Use
 
+See [docs/devices.md](docs/devices.md) for the full device reference,
+parameter meanings, and copyable netlist examples.
+
 Load the code model before circuit parsing and include the wrapper library:
 
 ```spice
