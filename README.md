@@ -27,6 +27,10 @@ That tree supplies the XSPICE build harness needed to compile the custom
 - `docs/` - design and usage notes
 - `build/` - expected location for generated `ngfuncs.cm`
 
+Start with [docs/project-guide.md](docs/project-guide.md) when returning to
+this project after a break. It explains the project purpose, file ownership,
+build flow, tests, generated files, and common failure modes.
+
 ## Build
 
 Build the custom code-model library from the vendored ngspice tree:
