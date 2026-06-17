@@ -5,7 +5,7 @@ cm=${NGFUNCS_CM:-build/ngfuncs.cm}
 
 if [ ! -f "$cm" ]; then
     echo "Missing $cm" >&2
-    echo "Build ngfuncs.cm from an ngspice source tree, then copy it to build/ngfuncs.cm." >&2
+    echo "Run: make build-cm" >&2
     exit 2
 fi
 
@@ -24,4 +24,3 @@ for deck in tests/test_*.cir; do
 done
 
 exit "$status"
-

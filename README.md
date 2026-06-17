@@ -11,14 +11,15 @@ The initial library targets:
 - derivative wrapper around ngspice's built-in `d_dt`
 - resettable integration with anti-windup
 
-The local ngspice package supplies the runtime XSPICE libraries, but this
-machine's Debian/Ubuntu `ngspice-dev` package does not include `cmpp`, the
-code-model preprocessor needed to build a `.cm` library directly from this
-workspace. Use an ngspice source tree to compile `ngfuncs.cm`.
+This project vendors the ngspice-46 source/build tree under `src/ngspice`.
+That tree supplies the XSPICE build harness needed to compile the custom
+`ngfuncs.cm` library. Simulation uses the installed runtime on PATH, currently
+`/home/chaiwichit-sura/.local/bin/ngspice`.
 
 ## Layout
 
-- `src/xspice/icm/ngfuncs/` - XSPICE code-model library source
+- `src/xspice/icm/ngfuncs/` - project XSPICE code-model library source
+- `src/ngspice/` - vendored ngspice-46 source/build tree used to build `.cm`
 - `lib/ngfuncs.lib` - user-facing `.subckt` wrappers
 - `examples/` - runnable example decks after `build/ngfuncs.cm` exists
 - `tests/` - ngspice regression decks and test runner
@@ -28,34 +29,22 @@ workspace. Use an ngspice source tree to compile `ngfuncs.cm`.
 
 ## Build
 
-1. Get an ngspice source tree matching your installed version when possible.
-2. Copy this project library into the source tree:
+Build the custom code-model library from the vendored ngspice tree:
 
-   ```sh
-   scripts/install_into_ngspice_source.sh /path/to/ngspice-source
-   ```
+```sh
+make build-cm
+make test
+```
 
-   The installer also applies a small compatibility patch for the Ubuntu
-   ngspice-45.2 runtime used on this machine: dynamic XSPICE `SPICEdev`
-   structures need the KLU callback slots before the instance/model size
-   fields, and generated custom models leave those KLU bind callbacks null.
+`make build-cm` copies `src/xspice/icm/ngfuncs` into
+`src/ngspice/src/xspice/icm/ngfuncs`, builds `ngfuncs.cm` there, then copies
+the result to `build/ngfuncs.cm`.
 
-3. Build ngspice from that source tree using its normal configure/make flow.
-4. Copy the produced `ngfuncs.cm` into this repository:
+To use a different source tree, override `NGSPICE_SRC`:
 
-   ```sh
-   mkdir -p build
-   cp /path/to/ngspice-build/src/xspice/icm/ngfuncs/ngfuncs.cm build/ngfuncs.cm
-   ```
-
-5. Run the tests:
-
-   ```sh
-   make test
-   ```
-
-On this machine the working local source tree is `src/ngspice`, and the built
-library is copied to `build/ngfuncs.cm`.
+```sh
+make build-cm NGSPICE_SRC=/path/to/ngspice-source
+```
 
 ## Use
 

@@ -51,16 +51,14 @@ transition. No model can detect a pulse that is completely skipped by transient
 timestep selection, so practical decks should keep reset and sampling pulses
 wide enough for the selected `.tran` step control.
 
-## ngspice 45.2 Package Compatibility
+## Build Dependency Layout
 
-The local Ubuntu ngspice runtime is `ngspice-45.2` with KLU enabled, but the
-SourceForge 45.2 source layout used for building custom `.cm` libraries places
-the KLU device callbacks after the instance/model size fields. The installed
-runtime calls those KLU callbacks before the size fields. If left unpatched,
-ngspice jumps through the wrong `SPICEdev` slot after the initial transient
-solution and crashes.
+The project keeps the ngspice-46 source/build tree in `src/ngspice` so custom
+XSPICE code models can be rebuilt without depending on an external source
+checkout. The installed runtime at `/home/chaiwichit-sura/.local/bin/ngspice`
+is used for simulation.
 
-`scripts/install_into_ngspice_source.sh` patches the build source so generated
-custom XSPICE models have the runtime-compatible field order and null KLU bind
-callbacks. The custom analog blocks do not need KLU binding callbacks; leaving
-the slots null lets ngspice skip that path.
+`cmpp` alone is not enough to build `ngfuncs.cm`; the dynamic code-model build
+also needs ngspice's XSPICE build files and headers. `make build-cm` uses the
+vendored tree for those files and copies the generated library to
+`build/ngfuncs.cm`.

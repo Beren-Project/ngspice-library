@@ -1,3 +1,4 @@
 .repo.git/
 tests/output/
 *.log
+src/ngspice/src/xspice/icm/ngfuncs/
