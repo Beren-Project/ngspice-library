@@ -1,4 +1,4 @@
-Derivative wrapper regression
+Derivative wrapper pulse-input regression
 
 .control
 pre_codemodel build/ngfuncs.cm
@@ -6,25 +6,29 @@ pre_codemodel build/ngfuncs.cm
 
 .include lib/ngfuncs.lib
 
-Vin in 0 pwl(0 0 0.6 1.2)
+Vin in 0 pwl(0 0 0.10 0 0.101 1 0.20 1 0.201 0 0.32 0 0.321 1 0.43 1 0.431 0 0.55 0)
 
 Xddt in slope NG_DDT params: gain=1
 
 Rin in 0 1G
 Rslope slope 0 1G
 
-.tran 0.25m 0.6
+.tran 0.05m 0.55
 
 .control
 run
-meas tran slope_avg AVG v(slope) from=0.20 to=0.50
-meas tran slope_mid FIND v(slope) at=0.30
-if (abs(slope_avg - 2.0) < 0.05) & (abs(slope_mid - 2.0) < 0.05)
+meas tran first_rise AVG v(slope) from=0.1002 to=0.1008
+meas tran first_high_flat AVG v(slope) from=0.13 to=0.18
+meas tran first_fall AVG v(slope) from=0.2002 to=0.2008
+meas tran low_flat AVG v(slope) from=0.24 to=0.30
+meas tran second_rise AVG v(slope) from=0.3202 to=0.3208
+meas tran second_fall AVG v(slope) from=0.4302 to=0.4308
+if (abs(first_rise - 1000) < 80) & (abs(first_high_flat) < 0.05) & (abs(first_fall + 1000) < 80) & (abs(low_flat) < 0.05) & (abs(second_rise - 1000) < 80) & (abs(second_fall + 1000) < 80)
   echo TEST PASS derivative
   quit 0
 else
   echo TEST FAIL derivative
-  print slope_avg slope_mid
+  print first_rise first_high_flat first_fall low_flat second_rise second_fall
   quit 1
 end
 .endc
