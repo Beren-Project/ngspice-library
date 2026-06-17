@@ -73,6 +73,29 @@ Vendored/generated paths:
 | `tests/output/report/data/*.dat` | Generated waveform data from `wrdata`. |
 | `tests/output/report/logs/*.log` | Generated ngspice logs for each regression deck. |
 
+Ownership map:
+
+```mermaid
+flowchart LR
+    subgraph Canonical["Edit these project files"]
+        A["src/xspice/icm/ngfuncs/"]
+        B["lib/ngfuncs.lib"]
+        C["tests/test_*.cir"]
+        D["docs/*.md"]
+        E["examples/*.cir"]
+    end
+
+    subgraph Generated["Generated or copied outputs"]
+        F["src/ngspice/src/xspice/icm/ngfuncs/"]
+        G["build/ngfuncs.cm"]
+        H["tests/output/report/"]
+    end
+
+    A -- "make build-cm copies source" --> F
+    F -- "ngspice XSPICE build" --> G
+    C -- "make test" --> H
+```
+
 ## Build Model
 
 The hard dependency is the XSPICE code-model build harness. Ubuntu packages may
@@ -94,6 +117,35 @@ That target does three things:
 3. Runs the ngspice XSPICE build target and copies the resulting library to
    `build/ngfuncs.cm`.
 
+Build workflow:
+
+```mermaid
+flowchart TD
+    A["Canonical source\nsrc/xspice/icm/ngfuncs/"]
+    B["make install-source\nscripts/install_into_ngspice_source.sh"]
+    C["Vendored build copy\nsrc/ngspice/src/xspice/icm/ngfuncs/"]
+    D["Vendored XSPICE makefiles\nsrc/ngspice/src/xspice/icm/GNUmakefile"]
+    E["make -C src/ngspice/src/xspice/icm\ncm=ngfuncs ngfuncs/ngfuncs.cm"]
+    F["Built library inside vendored tree\nsrc/ngspice/src/xspice/icm/ngfuncs/ngfuncs.cm"]
+    G["Project runtime artifact\nbuild/ngfuncs.cm"]
+
+    A --> B
+    B --> C
+    B -- "adds ngfuncs to CMDIRS if needed" --> D
+    C --> E
+    D --> E
+    E --> F
+    F -- "copy" --> G
+```
+
+The Makefile is shaped this way because `ngfuncs.cm` is not built by compiling
+the project folder alone. Dynamic XSPICE code models depend on ngspice's own
+source-tree build harness: generated headers, makefile fragments, model lists,
+and code-model build rules. `make build-cm` therefore copies the canonical
+project source into the vendored ngspice tree, invokes that XSPICE build
+harness, then copies the final `.cm` back to `build/` where user netlists and
+tests can load it.
+
 Simulation uses the installed ngspice executable on `PATH`, currently expected
 to be `/home/chaiwichit-sura/.local/bin/ngspice`. Check with:
 
@@ -105,6 +157,34 @@ which cmpp
 
 The expected runtime version is ngspice 46. Keep the runtime and vendored source
 version aligned when possible.
+
+## Netlist Load Flow
+
+A user netlist needs both the compiled `.cm` library and the `.lib` wrapper
+file. The `.cm` file registers the code models with ngspice. The `.lib` file
+defines convenient subcircuits that instantiate those models.
+
+```mermaid
+flowchart LR
+    A["User .cir netlist"]
+    B[".control\npre_codemodel build/ngfuncs.cm\n.endc"]
+    C[".include lib/ngfuncs.lib"]
+    D["build/ngfuncs.cm\ncompiled XSPICE code models"]
+    E["lib/ngfuncs.lib\n.subckt wrappers"]
+    F["X instance\nXint in rst out NG_INT_RISE params: ..."]
+    G["Wrapper .model line\nng_int_rst(mode=1, ...)"]
+    H["Loaded C model\nucm_ng_int_rst()"]
+
+    A --> B
+    A --> C
+    B --> D
+    C --> E
+    A --> F
+    F --> E
+    E --> G
+    G --> D
+    D --> H
+```
 
 ## Normal Workflow
 
@@ -157,6 +237,31 @@ wrdata tests/output/report/data/<test>.dat ...
 ```
 
 The original source netlist is embedded in the HTML report for reference.
+
+Test report workflow:
+
+```mermaid
+flowchart TD
+    A["tests/test_*.cir\noriginal regression decks"]
+    B["scripts/make_test_report.py"]
+    C["Generated report decks\ntests/output/report/decks/*.cir"]
+    D["ngspice -b"]
+    E["Pass/fail from TEST PASS\nand process status"]
+    F["wrdata waveform files\ntests/output/report/data/*.dat"]
+    G["ngspice logs\ntests/output/report/logs/*.log"]
+    H["HTML report\ntests/output/report/index.html"]
+
+    A --> B
+    B -- "inserts wrdata after run" --> C
+    C --> D
+    D --> E
+    D --> F
+    D --> G
+    A -- "embedded original netlist" --> H
+    E --> H
+    F --> H
+    G --> H
+```
 
 ## Implementation Notes
 
