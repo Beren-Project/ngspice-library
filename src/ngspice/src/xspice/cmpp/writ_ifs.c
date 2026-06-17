@@ -1117,9 +1117,9 @@ static int write_SPICEdev(
             "#endif\n"
             "\n"
             "#ifdef KLU\n"
-            "    .DEVbindCSC = NULL,\n"
-            "    .DEVbindCSCComplex = NULL,\n"
-            "    .DEVbindCSCComplexToReal = NULL,\n"
+            "    .DEVbindCSC = MIFbindCSC,\n"
+            "    .DEVbindCSCComplex = MIFbindCSCComplex,\n"
+            "    .DEVbindCSCComplexToReal = MIFbindCSCComplexToReal,\n"
             "#endif\n"
             "};\n\n"
             );

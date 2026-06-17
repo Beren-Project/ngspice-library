@@ -16,7 +16,7 @@
 # problem to the user.
 AC_PREREQ([2.70])
 
-m4_define([ngspice_major_version], [45.2])
+m4_define([ngspice_major_version], [46])
 m4_define([ngspice_minor_version], [0])
 m4_define([ngspice_version],
       [ngspice_major_version])
@@ -117,7 +117,7 @@ LT_INIT([shared static])
 #  --> Set 'LT_NGSPICE_AGE' to 0.
 
 LT_NGSPICE_CURRENT=0
-LT_NGSPICE_REVISION=14
+LT_NGSPICE_REVISION=15
 LT_NGSPICE_AGE=0
 LIBNGSPICE_SO_VERSION=$LT_NGSPICE_CURRENT.$LT_NGSPICE_REVISION.$LT_NGSPICE_AGE
 
@@ -229,10 +229,6 @@ AC_ARG_ENABLE([predictor],
 AC_ARG_ENABLE([newpred],
     [AS_HELP_STRING([--enable-newpred], [Enable NEWPRED whatever it is(?)])])
 
-# --enable-newtrunc: define NEWTRUNC for the code
-AC_ARG_ENABLE([newtrunc],
-    [AS_HELP_STRING([--enable-newtrunc], [Enable, how we want extrapolate capacitances.])])
-
 # --enable-sense2: define WANT_SENSE2 for the code
 AC_ARG_ENABLE([sense2],
     [AS_HELP_STRING([--enable-sense2], [Use spice2 sensitivity analysis.])])
@@ -284,10 +280,6 @@ AC_ARG_ENABLE([expdevices],
 # --enable-ndev: define NDEV in the code. An interface for external device i.e. numerical device
 AC_ARG_ENABLE([ndev],
     [AS_HELP_STRING([--enable-ndev], [Enable NDEV interface, (experimental)])])
-
-# --enable-cluster: define CLUSTER in the code. This is for cluster support
-AC_ARG_ENABLE([cluster],
-    [AS_HELP_STRING([--enable-cluster], [Enable cluster support, (experimental)])])
 
 # --enable-cmathtests: run the ancient tests in src/math/cmaths
 AC_ARG_ENABLE([cmathtests],
@@ -1048,10 +1040,6 @@ if test "x$enable_newpred" = xyes; then
     AC_DEFINE([NEWPRED], [], [Define if you want to discover :)])
     AC_MSG_RESULT([NEWPRED enabled])
 fi
-if test "x$enable_newtrunc" = xyes; then
-    AC_DEFINE([NEWTRUNC], [], [Do not trigger unwanted traps by default])
-    AC_MSG_RESULT([New truncation error calculation enabled])
-fi
 if test "x$enable_experimental" = xyes; then
     AC_DEFINE([EXPERIMENTAL_CODE], [], [Define if we want some experimental code])
     AC_MSG_RESULT([EXPERIMENTAL_CODE enabled])
@@ -1244,14 +1232,6 @@ if test "x$enable_ndev" = xyes; then
 fi
 AM_CONDITIONAL([NDEV_WANTED], [test "x$enable_ndev" = xyes])
 
-
-# Cluster option
-if test "x$enable_cluster" = xyes; then
-    AC_MSG_RESULT([Cluster version is being compiled])
-    AC_DEFINE([CLUSTER], [], [Spice cluster support])
-    LIBS="$LIBS -lpthread"
-fi
-
 if test "x$enable_expdevices" = xyes; then
     AC_DEFINE([EXP_DEV], [], [Define if we want to enable experimental devices])
     AC_MSG_RESULT([WARNING: Experimental devices enabled])
@@ -1440,7 +1420,6 @@ AC_CONFIG_FILES([Makefile
                  src/xspice/mif/Makefile
                  src/xspice/evt/Makefile
                  src/xspice/enh/Makefile
-                 src/xspice/ipc/Makefile
                  src/xspice/idn/Makefile
                  src/xspice/verilog/Makefile
                  src/xspice/vhdl/Makefile

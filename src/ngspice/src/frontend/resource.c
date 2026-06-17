@@ -213,14 +213,6 @@ printres(char *name)
             called = TRUE;
         }
 
-#ifdef XSPICE
-        /* gtri - add - 12/12/90 - wbk - record cpu time used for ipc */
-        g_ipc.cpu_time = (double) last_msec;
-        g_ipc.cpu_time /= 1000.0;
-        g_ipc.cpu_time += (double) last_sec;
-        /* gtri - end - 12/12/90 */
-#endif
-
         yy = TRUE;
 #else
         if (!name || eq(name, "totalcputime"))
@@ -339,9 +331,9 @@ printres(char *name)
                     ft_curckt->ci_ckt->CKTstat->devTimes[i]/(double)(ft_curckt->ci_ckt->CKTstat->devCounts[i])
                 );
             }
+            yy = TRUE;
         }
-        yy = TRUE;
-        
+
 #ifdef CIDER
 /* begin cider integration */
         if (!name || eq(name, "circuit") || eq(name, "task"))

@@ -7,7 +7,7 @@ include makedefs
 
 
 # The codemodels to make
-CMDIRS = spice2poly digital analog xtradev xtraevt table tlines ngfuncs
+CMDIRS = spice2poly digital analog xtradev xtraevt table tlines
 
 
 #Invoke $(MAKE) for each of the CMDDIRS

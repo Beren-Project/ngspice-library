@@ -15,7 +15,7 @@
 #define PACKAGE "ngspice"
 
 /* Version number of package */
-#define VERSION "45.2"
+#define VERSION "46"
 
 /* Define the directory for executables */
 #define NGSPICEBINDIR "../bin"
@@ -46,9 +46,6 @@
 
 /* Define to 1 if the `closedir' function returns void instead of `int'. */
 /* #undef CLOSEDIR_VOID */
-
-/* Spice cluster support */
-/* #undef CLUSTER */
 
 /* Define if you want to debug ngspice shell */
 /* #undef CPDEBUG */
@@ -467,9 +464,6 @@
 /* Define if you want to discover :) */
 /* #undef NEWPRED */
 
-/* Do not trigger unwanted traps by default */
-/* #undef NEWTRUNC */
-
 /* Define if we want NOBYPASS */
 /* #undef NOBYPASS */
 
@@ -493,7 +487,7 @@
 #define PACKAGE_VERSION VERSION
 
 /* Define if we want predictor algorithm */
-/* #undef PREDICTOR */
+#define PREDICTOR
 
 /* Define to 1 if the C compiler supports function prototypes. */
 /* #undef PROTOTYPES */

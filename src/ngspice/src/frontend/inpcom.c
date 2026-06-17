@@ -583,6 +583,7 @@ static struct library *read_a_lib(const char *y, const char *dir_name)
 
         if (!newfp) {
             fprintf(cp_err, "Error: Could not open library file %s\n", y);
+            perror("    Cause: ");
             return NULL;
         }
 
@@ -1054,6 +1055,10 @@ struct card *inp_readall(FILE *fp, const char *dir_name, const char* file_name,
     /* set the members of the compatibility structure */
     set_compat_mode();
 
+    /* Parsing the circuit 3.
+       This is the next major step:
+       Reading the netlist line by line, handle .include and .lib,
+       line continuation and upper/lower casing */
     rv = inp_read(fp, 0, dir_name, file_name, comfile, intfile);
     cc = rv.cc;
 
@@ -1099,6 +1104,16 @@ struct card *inp_readall(FILE *fp, const char *dir_name, const char* file_name,
             ltspice_compat_a(working);
         if (newcompat.ps && newcompat.a)
             pspice_compat_a(working);
+
+        /* another warning that codemodels or osdi libs have not been loaded successfully */
+        if (ft_osdierror) {
+            fprintf(stderr, "Warning: OSDI libs have not been loaded successfully.\n");
+            fprintf(stderr, "    Any of the following steps may fail, if Verilog A models are involved!.\n\n");
+        }
+        if (ft_codemodelerror) {
+            fprintf(stderr, "Warning: code models like analog.cm have not been loaded successfully.\n");
+            fprintf(stderr, "    Any of the following steps may fail, if code models are involved!.\n\n");
+        }
 
         struct nscope *root = inp_add_levels(working);
 
@@ -1241,40 +1256,46 @@ struct card *inp_readall(FILE *fp, const char *dir_name, const char* file_name,
                         continue;
                     /* Only truncated .model lines */
                     if (ciprefix(".model", t->line)) {
-                        fprintf(fd, "%6d  %.100s ...\n",
+                        fprintf(fd, "%6d  %.100s ",
                             t->linenum, t->line);
+                        if (strlen(t->line) > 100)
+                            fprintf(fd, " ... (truncated)");
+                        fprintf(fd, "\n");
                     }
                     else {
                         fprintf(fd, "%6d  %s\n",
                             t->linenum, t->line);
                     }
                 }
-                fprintf(fd,
-                    "\n\n**************** uncommented deck "
-                    "**************\n\n");
-                /* always print first line */
-                fprintf(fd, "%6s  %6d  %6d  %s\n", cc->linesource, cc->linenum_orig, cc->linenum,
-                    cc->line);
-                /* here without out-commented lines */
-                for (t = cc->nextcard; t; t = t->nextcard) {
-                    if (*(t->line) == '*')
-                        continue;
-                    fprintf(fd, "%6s  %6d  %6d  %s\n",
-                        t->linesource, t->linenum_orig, t->linenum, t->line);
-                }
-                fprintf(fd,
+                if (!cp_getvar("debug-out-short", CP_BOOL, NULL, 0)) {
+                    fprintf(fd,
+                        "\n\n**************** uncommented deck "
+                        "**************\n\n");
+                    /* always print first line */
+                    fprintf(fd, "%6s  %6d  %6d  %s\n", cc->linesource, cc->linenum_orig, cc->linenum,
+                        cc->line);
+                    /* here without out-commented lines */
+                    for (t = cc->nextcard; t; t = t->nextcard) {
+                        if (*(t->line) == '*')
+                            continue;
+                        fprintf(fd, "%6s  %6d  %6d  %s\n",
+                            t->linesource, t->linenum_orig, t->linenum, t->line);
+                    }
+                    fprintf(fd,
                         "\n\n****************** complete deck "
                         "***************\n\n");
-                /* now completely */
-                for (t = cc; t; t = t->nextcard)
-                    fprintf(fd, "%6s  %6d  %6d  %s\n",
-                            t->linesource, t->linenum_orig,t->linenum, t->line);
+                    /* now completely */
+                    for (t = cc; t; t = t->nextcard)
+                        fprintf(fd, "%6s  %6d  %6d  %s\n",
+                            t->linesource, t->linenum_orig, t->linenum, t->line);
+                }
                 fclose(fd);
 
                 fprintf(stdout,
-                        "max line length %d, max subst. per line %d, number "
-                        "of lines %d\n",
-                        (int) max_line_length, no_braces, dynmaxline);
+                    "max line length %d, max subst. per line %d, number "
+                    "of lines %d\n",
+                    (int)max_line_length, no_braces, dynmaxline);
+
             }
             else
                 fprintf(stderr,
@@ -1320,6 +1341,8 @@ static struct inp_read_t inp_read(FILE* fp, int call_depth, const char* dir_name
     static int is_control = 0; /* We are reading from a .control section */
 
     bool found_end = FALSE, shell_eol_continuation = FALSE;
+    static bool biaswarn = FALSE;
+    static bool hdlwarn = FALSE;
 #ifdef CIDER
     static int in_cider_model = 0;
 #endif
@@ -1347,53 +1370,24 @@ static struct inp_read_t inp_read(FILE* fp, int call_depth, const char* dir_name
         else {
 
 #ifdef XSPICE
-            /* gtri - modify - 12/12/90 - wbk - read from mailbox if ipc
-             * enabled */
 
-             /* If IPC is not enabled, do equivalent of what SPICE did before
-              */
-            if (!g_ipc.enabled) {
-                if (call_depth == 0 && line_count == 0) {
-                    line_count++;
-                    if (fgets(big_buff, 5000, fp))
-                        buffer = copy(big_buff);
-                }
-                else {
-                    buffer = readline(fp);
-                    if (!buffer)
-                        break;
-                }
+            if (call_depth == 0 && line_count == 0) {
+                line_count++;
+                if (fgets(big_buff, 5000, fp))
+                    buffer = copy(big_buff);
             }
             else {
-                /* else, get the line from the ipc channel. */
-                /* We assume that newlines are not sent by the client */
-                /* so we add them here */
-                char ipc_buffer[1025]; /* Had better be big enough */
-                int ipc_len;
-                Ipc_Status_t ipc_status =
-                    ipc_get_line(ipc_buffer, &ipc_len, IPC_WAIT);
-                if (ipc_status == IPC_STATUS_END_OF_DECK) {
-                    buffer = NULL;
+                buffer = readline(fp);
+                if (!buffer)
                     break;
-                }
-                else if (ipc_status == IPC_STATUS_OK) {
-                    buffer = TMALLOC(char, strlen(ipc_buffer) + 3);
-                    strcpy(buffer, ipc_buffer);
-                    strcat(buffer, "\n");
-                }
-                else { /* No good way to report this so just die */
-                    fprintf(stderr, "Error: IPC status not o.k.\n");
-                    controlled_exit(EXIT_FAILURE);
-                }
             }
 
-            /* gtri - end - 12/12/90 */
 #else
 
             buffer = readline(fp);
             if (!buffer) {
                 break;
-        }
+            }
 
 #endif
         }
@@ -1458,6 +1452,26 @@ static struct inp_read_t inp_read(FILE* fp, int call_depth, const char* dir_name
                 memcpy(buffer, ".inc", 4);
             }
 
+        if (ciprefix(".hdl", buffer)) {
+            if (!hdlwarn) {
+                fprintf(cp_err, "Warning: Dot command .hdl is not supported, ingnored\n");
+                fprintf(cp_err, "    line no. %d, %s", line_number, buffer);
+                fprintf(cp_err, "    file %s\n", file_name);
+                fprintf(cp_err, "    This message will be posted only once!\n\n");
+                hdlwarn = TRUE;
+            }
+            tfree(buffer);
+            continue;
+        }
+        if (ciprefix(".biaschk", buffer)) {
+            if (!biaswarn) {
+                fprintf(cp_err, "Warning: Dot command .biaschk is not supported, ingnored\n");
+                fprintf(cp_err, "    This message will be posted only once!\n\n");
+                biaswarn = TRUE;
+            }
+            tfree(buffer);
+            continue;
+        }
         /* now handle .include statements */
         if (ciprefix(".include", buffer) || ciprefix(".inc", buffer)) {
 
@@ -1557,6 +1571,7 @@ static struct inp_read_t inp_read(FILE* fp, int call_depth, const char* dir_name
                         else
                             fprintf(cp_err, "    While reading %s\n", y_resolved);
                     }
+                    perror("    Cause: ");
                     tfree(buffer); /* allocated by readline() above */
                     controlled_exit(EXIT_FAILURE);
                 }
@@ -1602,11 +1617,8 @@ static struct inp_read_t inp_read(FILE* fp, int call_depth, const char* dir_name
             char* tmpstr = copy(nexttok(buffer));
             wl_append_word(&sourceinfo, &sourceinfo, tmpstr);
 
-            /* Add source of netlist data, for use in verbose error messages.
-               Set the compatibility mode flag to 1, if pslt is read. */
+            /*  Set the compatibility mode flag to 1, if pslt is read. */
             for (tmpcard = newcard; tmpcard; tmpcard = tmpcard->nextcard) {
-                /* skip *include */
-                tmpcard->linesource = tmpstr;
                 if (compset)
                     tmpcard->compmod = 1;
                 else
@@ -1772,15 +1784,16 @@ static struct inp_read_t inp_read(FILE* fp, int call_depth, const char* dir_name
             }
 #endif
             /* no lower case letters for lines beginning with: */
-            else if (!ciprefix("write", buffer) &&
-                    !ciprefix("wrdata", buffer) &&
-                    !ciprefix(".lib", buffer) && !ciprefix(".inc", buffer) &&
-                    !ciprefix("codemodel", buffer) &&
-                    !ciprefix("osdi", buffer) &&
-                    !ciprefix("pre_osdi", buffer) &&
-                    !ciprefix("echo", buffer) && !ciprefix("shell", buffer) &&
-                    !ciprefix("source", buffer) && !ciprefix("cd ", buffer) &&
-                    !ciprefix("load", buffer) && !ciprefix("setcs", buffer)) {
+            else if (!(ciprefix(".lib", buffer) || ciprefix(".inc", buffer) ||
+                ((comfile || is_control) && (
+                    ciprefix("write", buffer) ||
+                    ciprefix("wrdata", buffer) ||
+                    ciprefix("codemodel", buffer) ||
+                    ciprefix("osdi", buffer) ||
+                    ciprefix("pre_osdi", buffer) ||
+                    ciprefix("echo", buffer) || ciprefix("shell", buffer) ||
+                    ciprefix("source", buffer) ||ciprefix("cd", buffer) ||
+                    ciprefix("load", buffer) || ciprefix("setcs", buffer))))) {
                 /* lower case for all other lines */
                 for (s = buffer; *s && (*s != '\n'); s++)
                     *s = tolower_c(*s);
@@ -1791,39 +1804,41 @@ static struct inp_read_t inp_read(FILE* fp, int call_depth, const char* dir_name
                 for (s = buffer; *s && (*s != '\n'); s++)
                     ;
             }
-            /* lower case for variables or vectors in command 'echo'  */
-            if (ciprefix("echo", buffer)) {
-                char* p = buffer, *tmpstr;
-                while (p && *p != '\n' &&  *p != '\0') {
-                    p = nexttok(p);
-                    /* vectors or variables start with $ */
-                    if (p && *p == '$') {
-                        for (tmpstr = p; *tmpstr && !isspace_c(*tmpstr); tmpstr++)
-                            *tmpstr = tolower_c(*tmpstr);
-                        p = tmpstr;
+            if (is_control) {
+                /* lower case for variables or vectors in command 'echo'  */
+                if (ciprefix("echo", buffer)) {
+                    char* p = buffer, * tmpstr;
+                    while (p && *p != '\n' && *p != '\0') {
+                        p = nexttok(p);
+                        /* vectors or variables start with $ */
+                        if (p && *p == '$') {
+                            for (tmpstr = p; *tmpstr && !isspace_c(*tmpstr); tmpstr++)
+                                *tmpstr = tolower_c(*tmpstr);
+                            p = tmpstr;
+                        }
                     }
                 }
-            }
-            /* add Inp_Path to buffer while keeping the sourcepath variable contents */
-            if (ciprefix("set", buffer)) {
-                char *p;
+                /* add Inp_Path to buffer while keeping the sourcepath variable contents */
+                if (ciprefix("set", buffer)) {
+                    char* p;
 
-                p = skip_ws(buffer + 3); // Next word
-                if (strncmp(p, "sourcepath", 10) == 0 &&
-                    skip_non_ws(p) == p + 10) {
-                    p = strchr(buffer, ')');
-                    if (p) {
-                        *p = 0; // clear ) and insert Inp_Path in between
-                        p = tprintf("%s %s ) %s", buffer,
+                    p = skip_ws(buffer + 3); // Next word
+                    if (strncmp(p, "sourcepath", 10) == 0 &&
+                        skip_non_ws(p) == p + 10) {
+                        p = strchr(buffer, ')');
+                        if (p) {
+                            *p = 0; // clear ) and insert Inp_Path in between
+                            p = tprintf("%s %s ) %s", buffer,
                                 Inp_Path ? Inp_Path : "", p + 1);
-                        tfree(buffer);
-                        buffer = p;
-                        /* s points to end of buffer */
-                        for (s = buffer; *s && (*s != '\n'); s++)
-                            ;
-                    }
-                    else {
-                        fprintf(stderr, "Warning: no closing parens found in 'set sourcepath' statement\n");
+                            tfree(buffer);
+                            buffer = p;
+                            /* s points to end of buffer */
+                            for (s = buffer; *s && (*s != '\n'); s++)
+                                ;
+                        }
+                        else {
+                            fprintf(stderr, "Warning: no closing parens found in 'set sourcepath' statement\n");
+                        }
                     }
                 }
             }
@@ -1880,11 +1895,13 @@ static struct inp_read_t inp_read(FILE* fp, int call_depth, const char* dir_name
         comfile = TRUE;
 
     if (call_depth == 0 && !comfile) {
-        if (!cp_getvar("no_auto_gnd", CP_BOOL, NULL, 0))
+        if (!cp_getvar("no_auto_gnd", CP_BOOL, NULL, 0) && !newcompat.ps)
             insert_new_line(cc, copy(".global gnd"), 1, 0, "internal");
-        else
+        else {
             insert_new_line(
-                    cc, copy("* gnd is not set to 0 automatically "), 1, 0, "internal");
+                cc, copy("* gnd is not set to 0 automatically "), 1, 0, "internal");
+            fprintf(stdout, "Note: gnd in a subcircuit is not set to 0 automatically\n");
+        }
 
         if (!newcompat.lt && !newcompat.ps && !newcompat.s3) {
             /* process all library section references */
@@ -2315,12 +2332,20 @@ static char *readline(FILE *fd)
 
 static void inp_fix_gnd_name(struct card *c)
 {
+    bool found_subckt = FALSE;
     for (; c; c = c->nextcard) {
-
         char *gnd = c->line;
 
+        // if inside of a subcircuit, and compatmode is ps, don't replace gnd
+        if (newcompat.ps) {
+           if (ciprefix(".subckt", c->line))
+                found_subckt = TRUE;
+            if (ciprefix(".ends", c->line))
+                found_subckt = FALSE;
+        }
+
         // if there is a comment or no gnd, go to next line
-        if ((*gnd == '*') || !strstr(gnd, "gnd"))
+        if (found_subckt || (*gnd == '*') || !strstr(gnd, "gnd"))
             continue;
 
         // replace "?gnd?" by "? 0 ?", ? being a ' '  ','  '('  ')'.
@@ -2852,6 +2877,7 @@ static void inp_fix_macro_param_func_paren_io(struct card *card)
                 str_ptr[3] = 'c';
                 str_ptr[4] = ' ';
             }
+//            fprintf(stdout, "%s\n", card->line);
         }
     }
 }
@@ -3469,7 +3495,7 @@ static void inp_stripcomments_deck(struct card *c, bool cf)
             found_control = TRUE;
         if (ciprefix(".endc", c->line))
             found_control = FALSE;
-        inp_stripcomments_line(c->line, found_control | cf, FALSE);
+        inp_stripcomments_line(c->line, found_control || cf, FALSE);
     }
 }
 
@@ -5171,7 +5197,6 @@ int get_number_terminals(char *c)
 {
     int   i, j, k;
     char *inst;
-    char *name[12];
     bool  area_found = FALSE;
 
     if (!c)
@@ -5277,35 +5302,36 @@ int get_number_terminals(char *c)
              * <TEMP=T> */
             /* 12 tokens maximum */
         {
+            char *name[12];
             char* cc, * ccfree;
 
+            (void) memset(name, 0, sizeof(name));
             cc = copy(c);
             /* required to make m= 1 a single token m=1 */
             ccfree = cc = inp_remove_ws(cc);
             for (i = j = 0; (i < 12) && (*cc != '\0'); ++i) {
-                char* comma;
 
                 name[i] = gettok_instance(&cc);
-                if (search_plain_identifier(name[i], "off") ||
-                    strchr(name[i], '=')) {
+                if (!name[i] || name[i][0] == '\0') {
+                    continue;
+                }
+                if (search_plain_identifier(name[i], "off")) {
                     j++;
                 }
 #ifdef CIDER
-                if (search_plain_identifier(name[i], "save") ||
-                    search_plain_identifier(name[i], "print")) {
+                if (search_plain_identifier(name[i], "save")) {
+                    j++;
+                } else if (search_plain_identifier(name[i], "print")) {
                     j++;
                 }
 #endif
-                /* If we have IC=VBE, VCE instead of IC=VBE,VCE
-                 *  we need to increment j.
-                 */
-                if ((comma = strchr(name[i], ',')) != NULL &&
-                        (*(++comma) == '\0'))
-                    j++;
-                /* If we have IC=VBE , VCE ("," is a token) we need to inc j
-                 */
-                if (eq(name[i], ","))
-                    j++;
+                if (strchr(name[i], '=')) {
+                    break;
+                }
+                /* an expression for area {...}, (without area={...})*/
+                if (*name[i] == '{') {
+                    break;
+                }
             }
             i--;
             tfree(ccfree);
@@ -5325,8 +5351,11 @@ int get_number_terminals(char *c)
                 if (only_digits && (strchr(name[k - 1], ',') == NULL))
                     area_found = TRUE;
             }
-            for (k = i; k >= 0; k--)
-                tfree(name[k]);
+            for (k = 0; k < 12; k++) {
+                if (name[k]) {
+                    tfree(name[k]);
+                }
+            }
             if (area_found) {
                 return i - j - 2;
             }
@@ -5645,11 +5674,9 @@ static void inp_reorder_params(
 }
 
 
-// iterate through deck and find lines with multiply defined parameters
-//
-// split line up into multiple lines and place those new lines immediately
-// after the current multi-param line in the deck
-
+/* Iterate through deck and find lines with more than one parameter defined
+   Split line up into multiple lines and place those new lines immediately
+   after the current multi-param line in the deck */
 static int inp_split_multi_param_lines(struct card *card, int line_num)
 {
     for (; card; card = card->nextcard) {
@@ -5685,6 +5712,12 @@ static int inp_split_multi_param_lines(struct card *card, int line_num)
                 int paren_depth = 0;
 
                 beg_param = skip_back_ws(equal_ptr, curr_line);
+                /* Special treatment if .param is a .func:
+                   move back to opening '(' */
+                if (*(beg_param - 1) == ')') {
+                    while (beg_param > curr_line && *beg_param != '(')
+                        beg_param--;
+                }
                 beg_param = skip_back_non_ws(beg_param, curr_line);
                 end_param = skip_ws(equal_ptr + 1);
                 while (*end_param && !isspace_c(*end_param)) {
@@ -6124,6 +6157,14 @@ static void inp_compat(struct card *card)
                    y_array=[y0 y1 y2]
                    input_domain=0.1 fraction=TRUE)
             */
+            /* Exxx n1 n2 nc1 nc2 TABLE = (x0, y0, x1, y1, x2, y2)
+               -->
+             Exxx n1 n2 Exxx_int1 0 1
+             aExxx %vd(nc1 nc2) %v(Exxx_int1) xfer_Exxx
+             .model xfer_Exxx pwl(x_array=[x0 x1 x2]
+                   y_array=[y0 y1 y2]
+                   input_domain=0.001 fraction=TRUE)
+            */
             if ((str_ptr = search_plain_identifier(curr_line, "table")) != NULL) {
                 char *expression, *firstno, *secondno;
                 DS_CREATE(dxar, 200);
@@ -6133,6 +6174,7 @@ static void inp_compat(struct card *card)
                 title_tok = gettok(&cut_line);
                 node1 = gettok(&cut_line);
                 node2 = gettok(&cut_line);
+
                 // Exxx  n1 n2 int1 0 1
                 ckt_array[0] = tprintf("%s %s %s %s_int1 0 1", title_tok,
                         node1, node2, title_tok);
@@ -6246,6 +6288,89 @@ static void inp_compat(struct card *card)
                     ds_free(&dxar);
                     ds_free(&dyar);
                 }
+                else {
+                    /* LTSPICE table line 
+                    Exxx n+ n- nc+ nc- table=(-5m, 1, 0, 3, 5m, 5) */
+                    char* node3, * node4;
+                    node3 = gettok(&cut_line);
+                    node4 = gettok(&cut_line);
+                    cut_line = skip_ws(cut_line);
+                    if (ciprefix("table", cut_line)) {
+                        /* a LTSPICE TABLE line */
+                        cut_line += 6;
+                        ckt_array[1] = tprintf(
+                            "a%s %%vd(%s %s) %%v(%s_int1) xfer_%s",
+                            title_tok, node3, node4, title_tok, title_tok);
+                        /* (x0, y0) (x1, y1) (x2, y2) to x0 x1 x2, y0 y1 y2 */
+                        int ipairs = 0;
+                        char* pair_line = cut_line;
+                        while (*cut_line != '\0') {
+                            firstno = gettok_node_br(&cut_line);
+                            secondno = gettok_node_br(&cut_line);
+                            if ((!firstno && secondno) ||
+                                (firstno && !secondno)) {
+                                fprintf(stderr,
+                                    "Error: Missing token in line %s\n"
+                                    "    line no. %d from file %s\n",
+                                    curr_line, card->linenum_orig, card->linesource);
+                                if (ft_stricterror)
+                                    controlled_exit(EXIT_FAILURE);
+                                break;
+                            }
+                            else if (!firstno && !secondno)
+                                continue;
+                            sadd(&dxar, firstno);
+                            cadd(&dxar, ' ');
+                            sadd(&dyar, secondno);
+                            cadd(&dyar, ' ');
+                            tfree(firstno);
+                            tfree(secondno);
+                            ipairs++;
+                        }
+                        /* There is a strange usage of the TABLE function:
+                           A single pair (x0, y0) will return a constant voltage y0 */
+                        if (ipairs == 1) {
+                            tfree(ckt_array[1]);
+                            tfree(ckt_array[2]);
+                            firstno = gettok_node_br(&pair_line);
+                            tfree(firstno);
+                            secondno = gettok_node_br(&pair_line);
+                            ckt_array[1] = tprintf("v%s %s_int1 0 %s", title_tok,
+                                title_tok, secondno);
+                            tfree(secondno);
+                            // comment out current variable e line
+                            *(card->line) = '*';
+                            // insert new lines immediately after current line
+                            for (i = 0; i < 2; i++) {
+                                card = insert_new_line(card, ckt_array[i], (int)i + 1, currlinenumber, card->linesource);
+                            }
+                        }
+                        else {
+                            ckt_array[2] = tprintf(
+                                ".model xfer_%s pwl(x_array=[%s] y_array=[%s] "
+                                "input_domain=0.001 fraction=TRUE limit=TRUE)",
+                                title_tok, ds_get_buf(&dxar), ds_get_buf(&dyar));
+                            // comment out current variable e line
+                            *(card->line) = '*';
+                            // insert new lines immediately after current line
+                            for (i = 0; i < 3; i++) {
+                                card = insert_new_line(card, ckt_array[i], (int)i + 1, currlinenumber, card->linesource);
+                            }
+                        }
+                        tfree(title_tok);
+                        tfree(node1);
+                        tfree(node2);
+                        tfree(node3);
+                        tfree(node4);
+                        ds_free(&dxar);
+                        ds_free(&dyar);
+                    }
+                    else {
+                        fprintf(stderr, "ERROR: mal formed E source instance: %s\n", curr_line);
+                        fprintf(stderr, "    in line no. %d of file %s\n", card->linenum_orig, card->linesource);
+                        controlled_exit(EXIT_FAILURE);
+                    }
+                }
              }
 
             /* Exxx n1 n2 VOL = {equation}
@@ -6312,6 +6437,15 @@ static void inp_compat(struct card *card)
              .model xfer_Gxxx pwl(x_array=[x0 x1 x2]
                    y_array=[y0 y1 y2]
                    input_domain=0.1 fraction=TRUE)
+            */
+            /* FIXME: to be done
+             Gxxx n1 n2 nc1 nc2 TABLE = (x0, y0, x1, y1, x2, y2) m=1
+               -->
+             Gxxx n1 n2 Gxxx_int1 0 1 m=1
+             aGxxx %vd(nc1 nc2) %v(Gxxx_int1) xfer_Gxxx
+             .model xfer_Gxxx pwl(x_array=[x0 x1 x2]
+                   y_array=[y0 y1 y2]
+                   input_domain=0.001 fraction=TRUE)
             */
             if ((str_ptr = search_plain_identifier(curr_line, "table")) != NULL) {
                 char *expression, *firstno, *secondno;
@@ -8292,7 +8426,7 @@ static void inp_quote_params(struct card *c, struct card *end_c,
 {
     bool in_control = FALSE;
 
-    if (ft_skywaterpdk)
+    if (cp_getvar("no_auto_braces", CP_BOOL, NULL, 0))
         return;
 
     for (; c && c != end_c; c = c->nextcard) {
@@ -8934,7 +9068,7 @@ static void inp_check_syntax(struct card *deck)
             acline = nexttok(acline);
             if (!acline) {
                 fprintf(stderr, "Error in line   %s\n", cut_line);
-                fprintf(stderr, "    Not enough parameters\n");
+                fprintf(stderr, "    Not enough parameters for %c source\n", *cut_line);
                 fprintf(stderr,
                     "    line no. %d from file %s\n",
                     card->linenum_orig, card->linesource);
@@ -9609,6 +9743,7 @@ static int inp_poly_2g6_compat(struct card* deck) {
                 continue;
             if (ciprefix("table", curr_line))
                 continue;
+            /* for TABLE with 4 nodes see below */
             if (ciprefix("laplace", curr_line))
                 continue;
             if (ciprefix("cur", curr_line))
@@ -9640,6 +9775,9 @@ static int inp_poly_2g6_compat(struct card* deck) {
                     controlled_exit(EXIT_BAD);
                 return 1;
             }
+            /* If we now have 'table', just return */
+            if (ciprefix("table", curr_line))
+                continue;
             /* The next token may be a simple text token or an expression
                enclosed in brackets */
             if (*curr_line == '{') {
