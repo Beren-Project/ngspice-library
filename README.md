@@ -40,6 +40,14 @@ make test
 `src/ngspice/src/xspice/icm/ngfuncs`, builds `ngfuncs.cm` there, then copies
 the result to `build/ngfuncs.cm`.
 
+`make test` runs the regression decks and writes a self-contained HTML report
+with pass/fail status, measurements, waveform plots, ngspice logs, and the
+source netlist for each test:
+
+```sh
+tests/output/report/index.html
+```
+
 To use a different source tree, override `NGSPICE_SRC`:
 
 ```sh
