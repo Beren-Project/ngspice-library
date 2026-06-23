@@ -1,0 +1,36 @@
+Smooth comparator PWM regression
+
+.include lib/ngfuncs.lib
+
+Vduty duty 0 dc 0.3
+Vramp ramp 0 pulse(0 1 0 1m 1n 1n 1m)
+
+Xpwm duty ramp pwm NG_COMP_SMOOTH_DIFF params: vlow=0 vhigh=1 vsmooth=2m trise=20u tfall=20u
+
+Rduty duty 0 1G
+Rramp ramp 0 1G
+Rpwm pwm 0 1G
+
+.tran 0.5u 2.2m
+
+.control
+run
+meas tran first_fall WHEN v(pwm)=0.5 fall=1
+meas tran first_rise WHEN v(pwm)=0.5 rise=1
+meas tran second_fall WHEN v(pwm)=0.5 fall=2
+meas tran repeat_period TRIG v(pwm) val=0.5 fall=1 TARG v(pwm) val=0.5 fall=2
+meas tran first_high FIND v(pwm) at=0.15m
+meas tran first_low FIND v(pwm) at=0.65m
+meas tran second_high FIND v(pwm) at=1.15m
+meas tran second_low FIND v(pwm) at=1.65m
+if (abs(first_fall - 0.31m) < 15u) & (abs(first_rise - 1.01m) < 15u) & (abs(repeat_period - 1m) < 3u) & (first_high > 0.99) & (first_low < 0.01) & (second_high > 0.99) & (second_low < 0.01)
+  echo TEST PASS comparator_pwm
+  quit 0
+else
+  echo TEST FAIL comparator_pwm
+  print first_fall first_rise second_fall repeat_period first_high first_low second_high second_low
+  quit 1
+end
+.endc
+
+.end

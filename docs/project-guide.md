@@ -38,6 +38,8 @@ User-facing wrappers live in `lib/ngfuncs.lib`.
 | `NG_SAMPLE_RISE` | Sample-and-hold on trigger rising edge | `ng_sample(edge=1)` |
 | `NG_SAMPLE_FALL` | Sample-and-hold on trigger falling edge | `ng_sample(edge=2)` |
 | `NG_DDT` | Derivative block wrapper | ngspice built-in `d_dt` |
+| `NG_COMP_SMOOTH_DIFF` | Analog differential smooth comparator | behavioral `tanh` source + built-in `slew` |
+| `NG_COMP_SMOOTH_SE` | Analog single-ended smooth comparator | internal threshold source + `NG_COMP_SMOOTH_DIFF` |
 
 The detailed user reference is in `docs/devices.md`.
 
@@ -55,12 +57,14 @@ Important project-owned files:
 | `lib/ngfuncs.lib` | User-facing ngspice `.subckt` wrappers. |
 | `examples/` | Small runnable netlists for manual exploration. |
 | `tests/test_*.cir` | Regression decks used by `make test`. |
-| `tests/stock_ddt_smoke.cir` | Smoke test that only needs stock ngspice. |
+| `tests/stock_ddt_smoke.cir` | Derivative smoke test that only needs stock ngspice. |
+| `tests/stock_comparator_smoke.cir` | Smooth comparator smoke test that only needs stock ngspice. |
 | `scripts/install_into_ngspice_source.sh` | Copies canonical model source into the vendored ngspice build tree. |
 | `scripts/make_test_report.py` | Runs regression decks and writes the HTML waveform report. |
 | `scripts/project-git.sh` | Git helper for this workspace's alternate Git directory. |
 | `docs/design.md` | Lower-level design notes for model behavior. |
 | `docs/devices.md` | User device reference and examples. |
+| `docs/smooth-comparators.md` | Detailed differential and single-ended smooth-comparator guide. |
 
 Vendored/generated paths:
 
@@ -227,6 +231,10 @@ are easy to inspect:
 | `tests/test_sample_fall.cir` | Repeated falling-edge samples. |
 | `tests/test_integrator_antiwindup_pulse.cir` | High clamp, input reversal, pulse reset to `ic`, low clamp, second reversal. |
 | `tests/test_derivative.cir` | Two derivative devices: normal ramp input and extreme pulse input. |
+| `tests/test_comparator_transfer.cir` | 10%, 50%, and 90% transfer points, rail approach, and `voffset`. |
+| `tests/test_comparator_single_ended.cir` | Dynamic internal-`vth` crossings, asymmetric slew, bounds, and equivalence to the differential wrapper. |
+| `tests/test_comparator_dynamic.cir` | Asymmetric rise/fall times, monotonic transitions, and output bounds. |
+| `tests/test_comparator_pwm.cir` | Expected and repeating PWM crossings against a sawtooth ramp. |
 
 The report generator instruments each original deck by inserting:
 
@@ -300,6 +308,17 @@ The three custom XSPICE models share several important rules:
 `NG_DDT` is not custom C code. It is a wrapper around ngspice's built-in
 XSPICE `d_dt` model.
 
+The smooth comparators are also wrapper-only devices. A behavioral source
+computes the stateless `tanh` target voltage, and ngspice's built-in XSPICE
+`slew` model supplies stateful rise/fall limiting. The single-ended wrapper
+creates an instance-local voltage source at `vth` and delegates to the
+differential wrapper. These devices do not modify `ngfuncs.cm` or
+`modpath.lst`.
+
+Comparator parameters must satisfy `vsmooth>0`, `trise>0`, `tfall>0`, and
+`vhigh>vlow`. Invalid combinations are unsupported. Propagation delay and
+hysteresis are not implemented in the first version.
+
 ## Adding or Changing a Device
 
 For a new custom XSPICE model:
@@ -317,7 +336,8 @@ For a wrapper-only change:
 1. Edit `lib/ngfuncs.lib`.
 2. Add or update focused regression decks.
 3. Run `make test`.
-4. Update `docs/devices.md`.
+4. Run `make check-stock` when the wrapper uses stock ngspice facilities.
+5. Update `docs/devices.md`.
 
 ## Common Failure Modes
 

@@ -62,3 +62,18 @@ addt in out ng_ddt_m
 + out_lower_limit={lo} out_upper_limit={hi} limit_range={limit_range})
 .ends NG_DDT
 
+* Analog smooth comparator. Required: vsmooth>0, trise>0, tfall>0,
+* and vhigh>vlow. Propagation delay and hysteresis are not supported.
+.subckt NG_COMP_SMOOTH_DIFF inp inn out params: vlow=0 vhigh=1 voffset=0 vsmooth=1m trise=1n tfall=1n
+Btarget ng_comp_target 0 V={vlow + 0.5*(vhigh-vlow)*(1 + tanh(2.197224577*(V(inp)-V(inn)-voffset)/vsmooth))}
+aslew ng_comp_target out ng_comp_slew_m
+.model ng_comp_slew_m slew(rise_slope={0.8*(vhigh-vlow)/trise}
++ fall_slope={0.8*(vhigh-vlow)/tfall})
+.ends NG_COMP_SMOOTH_DIFF
+
+* Single-ended form with an instance-local reference voltage.
+.subckt NG_COMP_SMOOTH_SE in out params: vth=0 vlow=0 vhigh=1 vsmooth=1m trise=1n tfall=1n
+Vthreshold ng_comp_vth 0 dc {vth}
+Xdiff in ng_comp_vth out NG_COMP_SMOOTH_DIFF params: vlow={vlow} vhigh={vhigh}
++ voffset=0 vsmooth={vsmooth} trise={trise} tfall={tfall}
+.ends NG_COMP_SMOOTH_SE

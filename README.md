@@ -10,6 +10,7 @@ The initial library targets:
 - edge-triggered sample-and-hold
 - derivative wrapper around ngspice's built-in `d_dt`
 - resettable integration with anti-windup
+- analog smooth comparators with finite rise and fall slew rates
 
 This project vendors the ngspice-46 source/build tree under `src/ngspice`.
 That tree supplies the XSPICE build harness needed to compile the custom
@@ -62,6 +63,10 @@ The regression decks are intentionally split by device/behavior:
 - `test_sample_fall.cir` - repeated falling-edge samples
 - `test_integrator_antiwindup_pulse.cir` - anti-windup clamp, reverse input recovery, and pulse reset
 - `test_derivative.cir` - derivative wrapper
+- `test_comparator_transfer.cir` - differential transfer levels, rails, and offset
+- `test_comparator_single_ended.cir` - dynamic single-ended threshold, asymmetric slew, and differential equivalence
+- `test_comparator_dynamic.cir` - asymmetric 10-90% rise/fall times and bounds
+- `test_comparator_pwm.cir` - repeated PWM crossings against a sawtooth
 
 For `NG_INT_AW_PULSE`, `vth` is the reset threshold and `ic` is the reset
 output value. For example, `params: ic=0 ... vth=0.5` resets to `0 V` while
@@ -89,6 +94,10 @@ scripts/project-git.sh log --oneline
 See [docs/devices.md](docs/devices.md) for the full device reference,
 parameter meanings, and copyable netlist examples.
 
+For detailed comparator signal-flow diagrams, equations, parameter-selection
+guidance, and worked differential and single-ended circuits, see
+[docs/smooth-comparators.md](docs/smooth-comparators.md).
+
 Load the code model before circuit parsing and include the wrapper library:
 
 ```spice
@@ -106,4 +115,10 @@ XINT in reset out NG_INT_RISE params: ic=0 gain=1 vth=0.5
 XMOD in phase NG_INT_MOD params: ic=0 gain=1 modulus=1
 XSAMP signal clk held NG_SAMPLE_RISE params: ic=0 vth=0.5
 XDDT in slope NG_DDT params: gain=1
+XCOMP inp inn out NG_COMP_SMOOTH_DIFF params: vsmooth=1m trise=10n tfall=20n
+XCOMPSE in out_se NG_COMP_SMOOTH_SE params: vth=0.5 vsmooth=1m
 ```
+
+The smooth comparator wrappers and `NG_DDT` use stock ngspice facilities.
+They do not add code to `ngfuncs.cm`. See `examples/smooth_pwm.cir` for a
+finite-slew PWM example.

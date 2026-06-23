@@ -1,0 +1,54 @@
+Smooth differential comparator transfer regression
+
+.include lib/ngfuncs.lib
+
+Vinn inn 0 dc 0
+Vin10 in10 0 dc -0.5m
+Vin50 in50 0 dc 0
+Vin90 in90 0 dc 0.5m
+Vinlo inlo 0 dc -10m
+Vinhi inhi 0 dc 10m
+Vinoffset inoffset 0 dc 20m
+
+X10 in10 inn out10 NG_COMP_SMOOTH_DIFF params: vlow=-1 vhigh=3 vsmooth=1m trise=1n tfall=1n
+X50 in50 inn out50 NG_COMP_SMOOTH_DIFF params: vlow=-1 vhigh=3 vsmooth=1m trise=1n tfall=1n
+X90 in90 inn out90 NG_COMP_SMOOTH_DIFF params: vlow=-1 vhigh=3 vsmooth=1m trise=1n tfall=1n
+Xlo inlo inn outlo NG_COMP_SMOOTH_DIFF params: vlow=-1 vhigh=3 vsmooth=1m trise=1n tfall=1n
+Xhi inhi inn outhi NG_COMP_SMOOTH_DIFF params: vlow=-1 vhigh=3 vsmooth=1m trise=1n tfall=1n
+Xoffset inoffset inn outoffset NG_COMP_SMOOTH_DIFF params: vlow=-1 vhigh=3 voffset=20m vsmooth=1m trise=1n tfall=1n
+
+Rinn inn 0 1G
+Rin10 in10 0 1G
+Rin50 in50 0 1G
+Rin90 in90 0 1G
+Rinlo inlo 0 1G
+Rinhi inhi 0 1G
+Rinoffset inoffset 0 1G
+Rout10 out10 0 1G
+Rout50 out50 0 1G
+Rout90 out90 0 1G
+Routlo outlo 0 1G
+Routhi outhi 0 1G
+Routoffset outoffset 0 1G
+
+.tran 1n 10n
+
+.control
+run
+meas tran level10 FIND v(out10) at=5n
+meas tran level50 FIND v(out50) at=5n
+meas tran level90 FIND v(out90) at=5n
+meas tran low_rail FIND v(outlo) at=5n
+meas tran high_rail FIND v(outhi) at=5n
+meas tran shifted_crossing FIND v(outoffset) at=5n
+if (abs(level10 + 0.6) < 1m) & (abs(level50 - 1) < 1m) & (abs(level90 - 2.6) < 1m) & (abs(low_rail + 1) < 1m) & (abs(high_rail - 3) < 1m) & (abs(shifted_crossing - 1) < 1m)
+  echo TEST PASS comparator_transfer
+  quit 0
+else
+  echo TEST FAIL comparator_transfer
+  print level10 level50 level90 low_rail high_rail shifted_crossing
+  quit 1
+end
+.endc
+
+.end

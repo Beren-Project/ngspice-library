@@ -292,6 +292,106 @@ Rpulseddt pulse_ddt 0 1G
 .end
 ```
 
+## Analog Smooth Comparator
+
+Devices:
+
+- `NG_COMP_SMOOTH_DIFF inp inn out`
+- `NG_COMP_SMOOTH_SE in out`
+
+For signal-flow diagrams, parameter-selection guidance, and detailed PWM and
+threshold-detector examples, see
+[Smooth Analog Comparators](smooth-comparators.md).
+
+The output is an analog voltage. These wrappers use a behavioral `tanh`
+transfer followed by ngspice's stock XSPICE `slew` model. The transfer is
+continuous, stateless, and eventless; the slew stage supplies the dynamic
+state. No digital node or hard comparator event is created.
+
+Differential parameters:
+
+```spice
+params: vlow=0 vhigh=1 voffset=0 vsmooth=1m trise=1n tfall=1n
+```
+
+Single-ended parameters:
+
+```spice
+params: vth=0 vlow=0 vhigh=1 vsmooth=1m trise=1n tfall=1n
+```
+
+| Parameter | Meaning |
+| --- | --- |
+| `vlow` | Low output rail. |
+| `vhigh` | High output rail. |
+| `voffset` | Differential input offset subtracted before comparison. Differential wrapper only. |
+| `vth` | Single-ended threshold voltage. The wrapper creates an internal reference at this voltage. |
+| `vsmooth` | Differential input width between the 10% and 90% points of the static transfer. |
+| `trise` | Configured output 10-90% rise time for a full-scale transition. |
+| `tfall` | Configured output 90-10% fall time for a full-scale transition. |
+
+For the differential wrapper:
+
+```text
+vdiff = V(inp) - V(inn) - voffset
+target = vlow + (vhigh-vlow)/2
+         * (1 + tanh(2.197224577 * vdiff / vsmooth))
+```
+
+Therefore, `vdiff=-vsmooth/2`, `0`, and `+vsmooth/2` produce 10%, 50%,
+and 90% of the output span. The stock slew stage is configured with:
+
+```text
+rise_slope = 0.8 * (vhigh-vlow) / trise
+fall_slope = 0.8 * (vhigh-vlow) / tfall
+```
+
+Required parameter constraints:
+
+- `vsmooth > 0`
+- `trise > 0`
+- `tfall > 0`
+- `vhigh > vlow`
+
+Invalid combinations are unsupported and are not repaired silently.
+Propagation delay and hysteresis are not supported in this first version.
+
+Differential example:
+
+```spice
+Xcmp inp inn out NG_COMP_SMOOTH_DIFF params: vlow=0 vhigh=3.3
++ voffset=2m vsmooth=5m trise=20n tfall=30n
+```
+
+Single-ended example:
+
+```spice
+Xcmp in out NG_COMP_SMOOTH_SE params: vth=1.2 vlow=0 vhigh=1.8
++ vsmooth=5m trise=20n tfall=30n
+```
+
+PWM example:
+
+```spice
+Smooth finite-slew PWM example
+
+.include lib/ngfuncs.lib
+
+Vduty duty 0 dc 0.35
+Vramp ramp 0 pulse(0 1 0 100u 1n 1n 100u)
+Xpwm duty ramp pwm NG_COMP_SMOOTH_DIFF params: vsmooth=2m trise=1u tfall=1u
+
+Rduty duty 0 1G
+Rramp ramp 0 1G
+Rpwm pwm 0 1G
+
+.tran 0.1u 400u
+.end
+```
+
+The full runnable deck is `examples/smooth_pwm.cir`. A detailed single-ended
+threshold-detector example is available in `examples/smooth_threshold.cir`.
+
 ## Full Minimal Netlist Pattern
 
 Use this skeleton when adding any device to a new ngspice deck:

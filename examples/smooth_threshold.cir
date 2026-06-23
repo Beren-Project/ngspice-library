@@ -1,0 +1,19 @@
+Smooth single-ended threshold detector example
+
+.include lib/ngfuncs.lib
+
+Vin in 0 pwl(0 1.23 0.2m 1.23 0.200001m 1.27 0.6m 1.27 0.600001m 1.23 1m 1.23)
+
+Xdetect in detected NG_COMP_SMOOTH_SE params: vth=1.25 vlow=0 vhigh=1 vsmooth=1m trise=80u tfall=200u
+
+Rin in 0 1G
+Rout detected 0 1G
+
+.tran 0.5u 1m
+
+.control
+run
+plot v(in) v(detected)
+.endc
+
+.end

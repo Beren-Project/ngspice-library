@@ -1,0 +1,30 @@
+Stock ngspice smooth comparator smoke test
+
+.include lib/ngfuncs.lib
+
+Vin in 0 pulse(-10m 10m 0.2m 1n 1n 0.3m 1m)
+Vref ref 0 dc 0
+Xcomp in ref out NG_COMP_SMOOTH_DIFF params: vsmooth=1m trise=50u tfall=100u
+
+Rin in 0 1G
+Rref ref 0 1G
+Rout out 0 1G
+
+.tran 1u 0.8m
+
+.control
+run
+meas tran low_before FIND v(out) at=0.1m
+meas tran high_after FIND v(out) at=0.35m
+meas tran low_after FIND v(out) at=0.7m
+if (low_before < 0.01) & (high_after > 0.99) & (low_after < 0.01)
+  echo TEST PASS stock_comparator_smoke
+  quit 0
+else
+  echo TEST FAIL stock_comparator_smoke
+  print low_before high_after low_after
+  quit 1
+end
+.endc
+
+.end

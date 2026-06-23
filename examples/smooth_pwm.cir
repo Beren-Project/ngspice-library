@@ -1,0 +1,22 @@
+Smooth finite-slew PWM comparator example
+
+.include lib/ngfuncs.lib
+
+* A 0.35 V duty command compared with a 0-to-1 V, 10 kHz sawtooth.
+Vduty duty 0 dc 0.35
+Vramp ramp 0 pulse(0 1 0 100u 1n 1n 100u)
+
+Xpwm duty ramp pwm NG_COMP_SMOOTH_DIFF params: vlow=0 vhigh=1 vsmooth=2m trise=1u tfall=1u
+
+Rduty duty 0 1G
+Rramp ramp 0 1G
+Rpwm pwm 0 1G
+
+.tran 0.1u 400u
+
+.control
+run
+plot v(duty) v(ramp) v(pwm)
+.endc
+
+.end

@@ -21,6 +21,7 @@ test-report:
 
 check-stock:
 	@ngspice -b tests/stock_ddt_smoke.cir
+	@ngspice -b tests/stock_comparator_smoke.cir
 
 install-source:
 	@scripts/install_into_ngspice_source.sh "$(NGSPICE_SRC)"

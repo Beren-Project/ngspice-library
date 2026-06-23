@@ -1,0 +1,44 @@
+Smooth single-ended comparator dynamic regression
+
+.include lib/ngfuncs.lib
+
+Vin in 0 pwl(0 1.23 0.2m 1.23 0.200001m 1.27 0.6m 1.27 0.600001m 1.23 1m 1.23)
+Vref ref 0 dc 1.25
+
+Xse in out_se NG_COMP_SMOOTH_SE params: vth=1.25 vlow=0 vhigh=1 vsmooth=1m trise=80u tfall=200u
+Xdiff in ref out_diff NG_COMP_SMOOTH_DIFF params: vlow=0 vhigh=1 vsmooth=1m trise=80u tfall=200u
+Berror equivalent_error 0 V=V(out_se)-V(out_diff)
+
+Rin in 0 1G
+Rref ref 0 1G
+Routse out_se 0 1G
+Routdiff out_diff 0 1G
+Rerror equivalent_error 0 1G
+
+.tran 0.5u 1m
+
+.control
+run
+meas tran rise_time TRIG v(out_se) val=0.1 rise=1 TARG v(out_se) val=0.9 rise=1
+meas tran fall_time TRIG v(out_se) val=0.9 fall=1 TARG v(out_se) val=0.1 fall=1
+meas tran rise_q1 FIND v(out_se) at=0.22m
+meas tran rise_q2 FIND v(out_se) at=0.24m
+meas tran rise_q3 FIND v(out_se) at=0.26m
+meas tran fall_q1 FIND v(out_se) at=0.65m
+meas tran fall_q2 FIND v(out_se) at=0.70m
+meas tran fall_q3 FIND v(out_se) at=0.75m
+meas tran out_min MIN v(out_se)
+meas tran out_max MAX v(out_se)
+meas tran max_equivalent_error MAX v(equivalent_error)
+meas tran min_equivalent_error MIN v(equivalent_error)
+if (abs(rise_time - 80u) < 2u) & (abs(fall_time - 200u) < 3u) & (rise_q1 < rise_q2) & (rise_q2 < rise_q3) & (fall_q1 > fall_q2) & (fall_q2 > fall_q3) & (out_min > -1m) & (out_max < 1.001) & (abs(max_equivalent_error) < 1u) & (abs(min_equivalent_error) < 1u)
+  echo TEST PASS comparator_single_ended
+  quit 0
+else
+  echo TEST FAIL comparator_single_ended
+  print rise_time fall_time rise_q1 rise_q2 rise_q3 fall_q1 fall_q2 fall_q3 out_min out_max max_equivalent_error min_equivalent_error
+  quit 1
+end
+.endc
+
+.end
