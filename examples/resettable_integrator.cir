@@ -7,20 +7,23 @@ pre_codemodel build/ngfuncs.cm
 .include lib/ngfuncs.lib
 
 Vin in 0 dc 1
-Vrst rst 0 pulse(0 1 0.5 1n 1n 20m 1)
+Vrst rst 0 pulse(0 1 0.5 1u 1u 20m 1)
 
-Xint in rst out NG_INT_RISE params: ic=0 gain=1 vth=0.5
+Xlevel in rst out_level NG_INT_PULSE params: ic=0 gain=1 vth=0.5
+Xrise in rst out_rise NG_INT_RISE params: ic=0 gain=1 vth=0.5
+Xfall in rst out_fall NG_INT_FALL params: ic=0 gain=1 vth=0.5
 
 Rin in 0 1G
 Rrst rst 0 1G
-Rout out 0 1G
+Rlevel out_level 0 1G
+Rrise out_rise 0 1G
+Rfall out_fall 0 1G
 
 .tran 1m 1.2
 
 .control
 run
-plot v(in) v(rst) v(out)
+plot v(in) v(rst) v(out_level) v(out_rise) v(out_fall)
 .endc
 
 .end
-

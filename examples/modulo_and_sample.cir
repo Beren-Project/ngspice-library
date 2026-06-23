@@ -11,23 +11,24 @@ Vsig sig 0 sin(0 1 5)
 Vclk clk 0 pulse(0 1 0.05 1n 1n 0.05 0.2)
 
 Xphase in phase NG_INT_MOD params: ic=0 gain=1 modulus=1
-Xsamp sig clk held NG_SAMPLE_RISE params: ic=0 vth=0.5
+Xsamp_rise sig clk held_rise NG_SAMPLE_RISE params: ic=0 vth=0.5
+Xsamp_fall sig clk held_fall NG_SAMPLE_FALL params: ic=0 vth=0.5
 Xslope sig slope NG_DDT params: gain=1
 
 Rin in 0 1G
 Rs sig 0 1G
 Rc clk 0 1G
 Rp phase 0 1G
-Rh held 0 1G
+Rhr held_rise 0 1G
+Rhf held_fall 0 1G
 Rd slope 0 1G
 
 .tran 1m 1.2
 
 .control
 run
-plot v(phase) v(clk) v(held)
+plot v(phase) v(clk) v(held_rise) v(held_fall)
 plot v(sig) v(slope)
 .endc
 
 .end
-
