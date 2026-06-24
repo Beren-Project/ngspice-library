@@ -47,8 +47,7 @@ flowchart LR
 
 ## Coverage summary
 
-- Directly tested: all public wrappers except `NG_INT_AW_RISE` and
-  `NG_INT_AW_FALL`.
+- Directly tested: all public wrappers.
 - Strongest coverage: `NG_COMP_SMOOTH_DIFF`.
 - Current regression focus: nominal transient behavior.
 - Generated report files are artifacts and are ignored by Git.
@@ -83,7 +82,6 @@ not a failure.
 
 ## Remaining validation gaps
 
-- Direct tests for anti-windup rising- and falling-edge wrappers
 - Trigger hysteresis and initial-high trigger state
 - Negative input, nonzero `ic`, multi-wrap overshoot, and clamp interaction for
   the modulo integrator

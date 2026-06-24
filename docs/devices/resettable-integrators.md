@@ -11,8 +11,8 @@ reset. All use the custom `ng_int_rst` XSPICE model.
 | `NG_INT_RISE` | low-to-high transition | disabled | stable |
 | `NG_INT_FALL` | high-to-low transition | disabled | stable |
 | `NG_INT_AW_PULSE` | while reset is high | enabled | stable |
-| `NG_INT_AW_RISE` | low-to-high transition | enabled | needs verification |
-| `NG_INT_AW_FALL` | high-to-low transition | enabled | needs verification |
+| `NG_INT_AW_RISE` | low-to-high transition | enabled | stable |
+| `NG_INT_AW_FALL` | high-to-low transition | enabled | stable |
 
 ## Source
 
@@ -117,8 +117,10 @@ used by edge detection.
 - Falling reset: [`test_integrator_reset_fall.cir`](../../tests/test_integrator_reset_fall.cir)
 - AW level reset and rail recovery:
   [`test_integrator_antiwindup_pulse.cir`](../../tests/test_integrator_antiwindup_pulse.cir)
-
-TODO: direct validation needed for `NG_INT_AW_RISE` and `NG_INT_AW_FALL`.
+- AW rising-edge reset and rail recovery:
+  [`test_integrator_antiwindup_rise.cir`](../../tests/test_integrator_antiwindup_rise.cir)
+- AW falling-edge reset and rail recovery:
+  [`test_integrator_antiwindup_fall.cir`](../../tests/test_integrator_antiwindup_fall.cir)
 
 ## Limitations
 
