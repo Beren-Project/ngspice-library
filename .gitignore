@@ -11,3 +11,10 @@ src/ngspice/src/xspice/icm/ngfuncs/
 __pycache__/
 *.pyc
 *.o
+
+# Ignore AI working file
+AGENTS.md
+CONTEXT.md
+HANDOFF.md
+SESSION*.md
+NEXT*.md
