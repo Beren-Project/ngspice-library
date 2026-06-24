@@ -1,4 +1,5 @@
-.repo.git/
+.codex/
+.agents/
 tests/output/
 *.log
 src/ngspice/src/xspice/icm/ngfuncs/
@@ -12,7 +13,7 @@ __pycache__/
 *.pyc
 *.o
 
-# Ignore AI working file
+# AI working files
 AGENTS.md
 CONTEXT.md
 HANDOFF.md
