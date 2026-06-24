@@ -2,3 +2,12 @@
 tests/output/
 *.log
 src/ngspice/src/xspice/icm/ngfuncs/
+*.raw
+*.out
+*.plt
+*.dat
+*.csv
+*.bak
+__pycache__/
+*.pyc
+*.o
